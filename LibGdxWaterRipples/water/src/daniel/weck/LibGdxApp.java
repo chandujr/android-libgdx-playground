@@ -1,35 +1,34 @@
-package daniel.weck;
-
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.files.FileHandle;
-import com.badlogic.gdx.graphics.Camera;
-import com.badlogic.gdx.graphics.GL10;
-import com.badlogic.gdx.graphics.GLCommon;
-import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.PerspectiveCamera;
-import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.math.Intersector;
 import com.badlogic.gdx.math.Plane;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.collision.Ray;
-import com.badlogic.gdx.math.collision.Sphere;
 
 public class LibGdxApp implements ApplicationListener, InputProcessor {
 
-	WaterRipples waterRipples;
+	private WaterRipples waterRipples;
 
-	Camera camera;
+	private Camera camera;
 
-	Texture backgroundTexture_Aqua;
+	private Texture backgroundTexture_Aqua;
+
+	// change this value to make it 2D or 3D
+		private boolean force2D = true;
+
+		// enable or disable plane animation in 3D
+		private boolean animate = true;
 
 	@Override
 	public void create() {
 
 		Gdx.input.setInputProcessor(this);
 
-		FileHandle file = Gdx.files.internal("data/background-aqua.jpg");
+		// change the image path
+		FileHandle file = Gdx.files.internal("water_bg.png");
 		backgroundTexture_Aqua = new Texture(file);
 		backgroundTexture_Aqua.setFilter(Texture.TextureFilter.Linear,
 				Texture.TextureFilter.Linear);
@@ -37,18 +36,18 @@ public class LibGdxApp implements ApplicationListener, InputProcessor {
 				Texture.TextureWrap.ClampToEdge);
 	}
 
-	float cameraX;
-	float cameraXShift = 1.4f;
-	Vector3 gridCentre = new Vector3();
-	Vector3 vector3 = new Vector3();
-	Vector3 vector3_ = new Vector3();
+	private float cameraX;
+	private float cameraXShift = 1.4f;
+	private Vector3 gridCentre = new Vector3();
+	private Vector3 vector3 = new Vector3();
+	private Vector3 vector3_ = new Vector3();
 
-	float elapsedSeconds = 0;
+	private float elapsedSeconds = 0;
 
 	@Override
 	public void render() {
 		Gdx.gl.glClearColor(1, 1, 1, 1);
-		Gdx.gl.glClear(GL10.GL_COLOR_BUFFER_BIT);
+		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
 		// 0.033 or 0.016 seconds
 		float deltaSeconds = Gdx.graphics.getDeltaTime();
@@ -58,7 +57,6 @@ public class LibGdxApp implements ApplicationListener, InputProcessor {
 
 			if (waterRipples != null && camera instanceof PerspectiveCamera) {
 
-				boolean animate = true;
 				if (animate) {
 					cameraX += cameraXShift;
 					if (cameraX > waterRipples.width) {
@@ -112,7 +110,7 @@ public class LibGdxApp implements ApplicationListener, InputProcessor {
 					float fovHorizontal = radToDeg
 							* 2f
 							* (float) Math.atan((0.5f * nearWidth)
-									/ camera.near);
+							/ camera.near);
 
 					float val = 0.5f * nearHeight / camera.near;
 					float fovVertical = radToDeg * 2f * (float) Math.atan(val);
@@ -215,7 +213,7 @@ public class LibGdxApp implements ApplicationListener, InputProcessor {
 				float distance_to_center = dim / (float) Math.sin(halfFovRad);
 
 				Vector3 eyeToCenter = camera.direction.cpy().nor()
-						.mul(distance_to_center);
+						.scl(distance_to_center);
 				Vector3 eye = gridCentre.cpy().sub(eyeToCenter);
 
 				camera.position.set(eye);
@@ -232,26 +230,16 @@ public class LibGdxApp implements ApplicationListener, InputProcessor {
 			}
 		}
 
-		if (camera != null && !Gdx.graphics.isGL20Available()) {
-			camera.apply(Gdx.gl10);
-		}
-
-		GLCommon gl = null;
-		if (Gdx.graphics.isGL20Available())
-			gl = Gdx.gl20;
-		else
-			gl = Gdx.gl10;
-
 		if (waterRipples != null) {
-			gl.glActiveTexture(GL10.GL_TEXTURE0 + 0);
-			gl.glEnable(GL10.GL_TEXTURE_2D);
+//			GL20.glActiveTexture(GL20.GL_TEXTURE0);
+//			GL20.glEnable(GL20.GL_TEXTURE_2D);
 			backgroundTexture_Aqua.bind(0);
 
 			waterRipples.render(camera, false);
 		}
-	}
 
-	boolean force2D = true;
+		System.out.printf("FPS: %02d\n", Gdx.graphics.getFramesPerSecond());
+	}
 
 	private Vector3 resetCamera(int width, int height) {
 
@@ -263,12 +251,16 @@ public class LibGdxApp implements ApplicationListener, InputProcessor {
 		short gridWidth = (short) (width / (float) WaterRipples.CellSuggestedDimension);
 		short gridHeight = (short) (height / (float) WaterRipples.CellSuggestedDimension);
 
-		float gridZ = 0;
+		float gridZ;
 		if (force2D) {
 			camera = new OrthographicCamera(gridWidth, gridHeight);
 			((OrthographicCamera) camera).zoom = 1;
+			camera.up.set(1, 0, 0);
+			camera.direction.set(0, 0, -1);
+			((OrthographicCamera) camera).rotate(30);
 		} else {
 			camera = new PerspectiveCamera(67, gridWidth, gridHeight);
+			camera.rotate(Vector3.X, 30);
 		}
 
 		cameraX = gridWidth / 2f;
@@ -278,7 +270,7 @@ public class LibGdxApp implements ApplicationListener, InputProcessor {
 		// float cameraY = 0;
 
 		// float cameraZ = -Math.max(gridWidth, gridHeight) / 2f;
-		float cameraZ = 0;
+		float cameraZ = 500;
 
 		camera.position.set(cameraX, cameraY, cameraZ);
 
@@ -324,6 +316,11 @@ public class LibGdxApp implements ApplicationListener, InputProcessor {
 		return false;
 	}
 
+	@Override
+	public boolean mouseMoved(int screenX, int screenY) {
+		return false;
+	}
+
 	int xTouchDown = 0;
 	int yTouchDown = 0;
 
@@ -343,7 +340,7 @@ public class LibGdxApp implements ApplicationListener, InputProcessor {
 	public boolean touchUp(int x, int y, int pointer, int button) {
 		if (pointer == 0) {
 			if (xTouchDown == x && yTouchDown == y) {
-				force2D = !force2D;
+//				force2D = !force2D;
 				Vector3 gridDims = resetCamera(Gdx.graphics.getWidth(),
 						Gdx.graphics.getHeight());
 				if (gridDims != null) {
@@ -386,11 +383,6 @@ public class LibGdxApp implements ApplicationListener, InputProcessor {
 
 	@Override
 	public boolean scrolled(int arg0) {
-		return false;
-	}
-
-	@Override
-	public boolean touchMoved(int x, int y) {
 		return false;
 	}
 }
